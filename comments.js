@@ -1,27 +1,45 @@
 // create a web server
-// create a route for comments
-// return a list of comments
-
 var http = require('http');
 var fs = require('fs');
 var url = require('url');
+var querystring = require('querystring');
 
-http.createServer(function(request, response) {
-    var url_parts = url.parse(request.url, true);
-    if (url_parts.pathname === '/comments') {
-        fs.readFile('comments.json', function(err, data) {
-            if (err) {
-                response.writeHead(500, {'Content-Type': 'application/json'});
-                response.end(JSON.stringify({ error: "Unable to read comments file" }));
-            } else {
-                response.writeHead(200, {'Content-Type': 'application/json'});
-                response.end(data);
-            }
+// create a server
+http.createServer(function (req, res) {
+    var path = url.parse(req.url).pathname;
+    console.log('path: ' + path);
+    if (path === '/addComment') {
+        var postData = '';
+        req.setEncoding('utf8');
+        req.addListener('data', function (postDataChunk) {
+            postData += postDataChunk;
+        });
+        req.addListener('end', function () {
+            var params = querystring.parse(postData);
+            console.log('params: ' + JSON.stringify(params));
+            res.writeHead(200, {
+                'Content-Type': 'text/plain'
+            });
+            res.write('You\'ve sent the name: ' + params.name + '.\n');
+            res.write('You\'ve sent the comment: ' + params.comment + '.\n');
+            res.end();
         });
     } else {
-        response.writeHead(404, {'Content-Type': 'text/plain'});
-        response.end('Page not found');
+        fs.readFile(__dirname + path, function (err, data) {
+            if (err) {
+                res.writeHead(404, {
+                    'Content-Type': 'text/plain'
+                });
+                res.write('Page not found');
+                res.end();
+            } else {
+                res.writeHead(200, {
+                    'Content-Type': 'text/html'
+                });
+                res.write(data, 'utf8');
+                res.end();
+            }
+        });
     }
-}).listen(3000, function() {
-    console.log('Server listening on port 3000');
-});
+}).listen(3000, 'localhost');
+console.log('Server running at http://localhost:3000/');
