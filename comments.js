@@ -1,45 +1,50 @@
-// create a web server
-var http = require('http');
-var fs = require('fs');
-var url = require('url');
-var querystring = require('querystring');
+// Create web server
+// Use express
+const express = require('express');
+const app = express();
+const port = 3000;
 
-// create a server
-http.createServer(function (req, res) {
-    var path = url.parse(req.url).pathname;
-    console.log('path: ' + path);
-    if (path === '/addComment') {
-        var postData = '';
-        req.setEncoding('utf8');
-        req.addListener('data', function (postDataChunk) {
-            postData += postDataChunk;
-        });
-        req.addListener('end', function () {
-            var params = querystring.parse(postData);
-            console.log('params: ' + JSON.stringify(params));
-            res.writeHead(200, {
-                'Content-Type': 'text/plain'
-            });
-            res.write('You\'ve sent the name: ' + params.name + '.\n');
-            res.write('You\'ve sent the comment: ' + params.comment + '.\n');
-            res.end();
-        });
-    } else {
-        fs.readFile(__dirname + path, function (err, data) {
-            if (err) {
-                res.writeHead(404, {
-                    'Content-Type': 'text/plain'
-                });
-                res.write('Page not found');
-                res.end();
-            } else {
-                res.writeHead(200, {
-                    'Content-Type': 'text/html'
-                });
-                res.write(data, 'utf8');
-                res.end();
-            }
-        });
-    }
-}).listen(3000, 'localhost');
-console.log('Server running at http://localhost:3000/');
+// Use body-parser
+const bodyParser = require('body-parser');
+app.use(bodyParser.json());
+
+// Use mongoose
+const mongoose = require('mongoose');
+mongoose.connect('mongodb://localhost:27017/express_comments', {useNewUrlParser: true, useUnifiedTopology: true});
+
+// Create schema
+const commentSchema = new mongoose.Schema({
+    name: String,
+    email: String,
+    comment: String
+});
+
+// Create model
+const Comment = mongoose.model('Comment', commentSchema);
+
+// Create route
+app.get('/comments', (req, res) => {
+    Comment.find({}, (err, comments) => {
+        if (err) {
+            res.status(500).send(err);
+        } else {
+            res.send(comments);
+        }
+    });
+});
+
+app.post('/comments', (req, res) => {
+    const comment = new Comment(req.body);
+    comment.save((err, comment) => {
+        if (err) {
+            res.status(500).send(err);
+        } else {
+            res.send(comment);
+        }
+    });
+});
+
+// Listen to port
+app.listen(port, () => {
+    console.log(`Server is running on http://localhost:${port}`);
+});
